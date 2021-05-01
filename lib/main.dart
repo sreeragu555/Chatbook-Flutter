@@ -6,9 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'LoginPage.dart';
 
-void main() {
+void main() aync {
   WidgetsFlutterBinding.ensureInitialized();
-  Firebase.initializeApp();
+  await Firebase.initializeApp();
   runApp(MyApp());
 }
 
