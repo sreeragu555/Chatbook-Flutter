@@ -1,6 +1,12 @@
+import 'package:chatbookflutter/AllUsers.dart';
 import 'package:chatbookflutter/Chat.dart';
+import 'package:chatbookflutter/Disaplayall.dart';
+import 'package:chatbookflutter/LoginPage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 
 
 import 'TestUsers.dart';
@@ -15,6 +21,8 @@ class HomeScreenState extends State<HomeScreen> {
   static const String Settings = "Settings";
   static const String Logout = "Logout";
   static const List<String> choices = <String>[Settings, Logout];
+
+
 
   List<TestUsers> chatUsers = [
     TestUsers(Name: "Sreerag", message_Text: "Hi", time: "Now"),
@@ -59,16 +67,26 @@ class HomeScreenState extends State<HomeScreen> {
         margin: EdgeInsets.only(top: 5),
         child: SingleChildScrollView(
           physics: BouncingScrollPhysics(),
-          child: Chats(),
+           child: Chats(),
+
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.message_outlined),
+        onPressed:(){
+          Navigator.of(context).push(MaterialPageRoute(builder: (context)=>Displayall()));
+        }
       ),
     );
   }
 
-  void Action_for_PopUp(String choice) {
+  Future<void> Action_for_PopUp(String choice) async {
     if (choice == Settings)
       print("Settings clicked");
-    else if (choice == Logout) print("Logout clicked");
+    else if (choice == Logout){
+      await FirebaseAuth.instance.signOut();
+      Navigator.of(context).push(MaterialPageRoute(builder: (context)=>LoginPage()));
+    }
   }
 
   Widget Chats() => ListView.builder(
@@ -112,4 +130,5 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         );
       });
+
 }

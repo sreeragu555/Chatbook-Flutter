@@ -1,9 +1,11 @@
 import 'dart:io';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:chatbookflutter/AllUsers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -13,11 +15,12 @@ class Adddetails extends StatefulWidget {
   @override
   _AdddetailsState createState() => _AdddetailsState();
 }
-var user = FirebaseAuth.instance.currentUser;
-var uid = user.uid;
+
+FirebaseAuth user = FirebaseAuth.instance;
+String uid = user.currentUser.uid.toString();
+
 class _AdddetailsState extends State<Adddetails> {
   @override
-
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   File _image;
   var imgurl;
@@ -38,38 +41,50 @@ class _AdddetailsState extends State<Adddetails> {
 
   Future uploadImageToFirebase(BuildContext context) async {
     FirebaseStorage storage = FirebaseStorage.instance;
-    String url;
+    String url = "";
     Reference ref =
         storage.ref().child("uploads/image1" + DateTime.now().toString());
     UploadTask uploadTask = ref.putFile(_image);
     uploadTask.whenComplete(() async {
       url = await ref.getDownloadURL() as String;
       print(url);
+      addUser(name.text.toString(), url.toString());
     }).catchError((onError) {
       print(onError);
     });
     return url;
   }
 
-
-
-  Future<void> addUser() {
+  Future<void> addUser(String Name, String imageurl) async {
     CollectionReference users = FirebaseFirestore.instance.collection('Users');
     // Call the user's CollectionReference to add a new user
-     users.add({
-       'uid':uid,
-      'Name': name.text,
-      'Profile_pic_url':imgurl
-    })
-        .then((value) {
-          print("User Added");
-          return true;
-     })
-        .catchError((error){
-          print("Failed to add user: $error");
-          return false;
-     });
+    users.add({'uid': uid, 'Name': Name, 'Profile_pic_url': imageurl}).then(
+        (value) {
+      print("User Added");
+      EasyLoading.dismiss();
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (context) => HomeScreen()));
+    }).catchError((error) {
+      EasyLoading.dismiss();
+      final snackBar = SnackBar(
+        content: Text('Something is wrong!! Please try after sometime'),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      print("Failed to add user: $error");
+    });
   }
+
+  // List<AllUsers> userdata= [];
+  //
+  // Future<void> Check_User_details() async
+  // {
+  //   CollectionReference users = FirebaseFirestore.instance.collection('Users');
+  //   users.doc(uid).get().then((value){
+  //     userdata.insert(0,AllUsers(Name: value.data()["Name"], imageurl: value.data()["Profile_pic_url"]));
+  //
+  //   });
+  //
+  // }
 
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,15 +108,28 @@ class _AdddetailsState extends State<Adddetails> {
                           width: 300,
                           height: 300,
                           child: ClipRRect(
-                              borderRadius: BorderRadius.circular(300),
-                              child: Image(
-                                image: NetworkImage(
-                                    "https://devtalk.blender.org/uploads/default/original/2X/c/cbd0b1a6345a44b58dda0f6a355eb39ce4e8a56a.png"),
-                              )),
+                            borderRadius: BorderRadius.circular(300),
+                            child: Image.network(
+                                "https://devtalk.blender.org/uploads/default/original/2X/c/cbd0b1a6345a44b58dda0f6a355eb39ce4e8a56a.png",
+                              loadingBuilder:(BuildContext context, Widget child,ImageChunkEvent loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null ?
+                                    loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes
+                                        : null,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         ),
                         Positioned(
                           child: FloatingActionButton(
-                            onPressed: getImage,
+                            onPressed: () {
+
+                              getImage();
+                            },
                             tooltip: 'Pick Image',
                             child: Icon(
                               Icons.add_a_photo,
@@ -122,19 +150,11 @@ class _AdddetailsState extends State<Adddetails> {
               margin: EdgeInsets.only(top: 20),
               child: ElevatedButton(
                   onPressed: () {
+                    EasyLoading.show(status: 'loading...');
                     imgurl = uploadImageToFirebase(context);
-
-                    if(imgurl!=null)
-                    {
+                    if (imgurl != null) {
                       print("We have uploaded the image");
-                      var added_or_not=addUser();
-                      if(added_or_not==true)
-                        {
-                          print("We have added user also.");
-                          Navigator.of(context).push(MaterialPageRoute(builder: (context)=>HomeScreen()));
-                        }
-                    }
-                    else
+                    } else
                       print("Some error while uploading image");
                   },
                   child: Text("Next")),

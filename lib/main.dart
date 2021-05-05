@@ -5,15 +5,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'LoginPage.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  Firebase.initializeApp();
+  await Firebase.initializeApp();
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     if ( FirebaseAuth.instance.currentUser != null) {
@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
         ),
         home: HomeScreen(),
+        builder: EasyLoading.init(),
       );
     } else {
       return MaterialApp(
@@ -39,5 +40,4 @@ class MyApp extends StatelessWidget {
 
   }
 }
-
 
