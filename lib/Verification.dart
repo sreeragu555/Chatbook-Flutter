@@ -1,4 +1,5 @@
 import 'package:chatbookflutter/Adddetails.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pinput/pin_put/pin_put.dart';
@@ -21,7 +22,6 @@ class _otpscreenState extends State<OTPScreen> {
       borderRadius: BorderRadius.circular(15.0),
     );
   }
-
   String VerificationCode;
   Widget build(BuildContext context) {
     return Scaffold(

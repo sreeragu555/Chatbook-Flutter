@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:chatbookflutter/AllUsers.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
@@ -18,8 +18,30 @@ class Adddetails extends StatefulWidget {
 
 FirebaseAuth user = FirebaseAuth.instance;
 String uid = user.currentUser.uid.toString();
+String usercollectionid="-1",Name="-1",imageurl="-1";
 
 class _AdddetailsState extends State<Adddetails> {
+
+  @override
+  void initState(){
+    getUser();
+    super.initState();
+  }
+
+  Future<void> getUser() async {
+    CollectionReference users = FirebaseFirestore.instance.collection('Users');
+    // Call the user's CollectionReference to add a new user
+    users.where("uid",isEqualTo: uid).get().then((value){
+      value.docs.forEach((element) {
+        usercollectionid=element.reference.id;
+        Name=element["Name"];
+        imageurl=element["Profile_pic_url"];
+      });
+    });
+  }
+
+
+
   @override
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   File _image;
@@ -28,7 +50,7 @@ class _AdddetailsState extends State<Adddetails> {
   final picker = ImagePicker();
 
   Future getImage() async {
-    final pickedFile = await picker.getImage(source: ImageSource.gallery);
+    final pickedFile = await picker.getImage(source: ImageSource.gallery,maxHeight: 300,maxWidth: 300);
 
     setState(() {
       if (pickedFile != null) {
@@ -56,35 +78,44 @@ class _AdddetailsState extends State<Adddetails> {
   }
 
   Future<void> addUser(String Name, String imageurl) async {
+
     CollectionReference users = FirebaseFirestore.instance.collection('Users');
     // Call the user's CollectionReference to add a new user
-    users.add({'uid': uid, 'Name': Name, 'Profile_pic_url': imageurl}).then(
-        (value) {
-      print("User Added");
-      EasyLoading.dismiss();
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (context) => HomeScreen()));
-    }).catchError((error) {
-      EasyLoading.dismiss();
-      final snackBar = SnackBar(
-        content: Text('Something is wrong!! Please try after sometime'),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      print("Failed to add user: $error");
-    });
+    if(usercollectionid=='-1') {
+      users.add({'uid': uid, 'Name': Name, 'Profile_pic_url': imageurl}).then(
+              (value) {
+            print("User Added");
+            EasyLoading.dismiss();
+            Navigator.of(context)
+                .push(MaterialPageRoute(builder: (context) => HomeScreen()));
+          }).catchError((error) {
+        EasyLoading.dismiss();
+        final snackBar = SnackBar(
+          content: Text('Something is wrong!! Please try after sometime'),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        print("Failed to add user: $error");
+      });
+    }
+    else{
+      users.doc(usercollectionid).update({
+      'Name':Name,
+        'Profile_pic_url':imageurl
+      }).then((value) {
+        print("updated user details");
+        EasyLoading.dismiss();
+        Navigator.of(context)
+            .push(MaterialPageRoute(builder: (context) => HomeScreen()));
+      }).catchError((error) {
+        EasyLoading.dismiss();
+        final snackBar = SnackBar(
+          content: Text('Something is wrong!! Please try after sometime'),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        print("Failed to add user: $error");
+      });
+    }
   }
-
-  // List<AllUsers> userdata= [];
-  //
-  // Future<void> Check_User_details() async
-  // {
-  //   CollectionReference users = FirebaseFirestore.instance.collection('Users');
-  //   users.doc(uid).get().then((value){
-  //     userdata.insert(0,AllUsers(Name: value.data()["Name"], imageurl: value.data()["Profile_pic_url"]));
-  //
-  //   });
-  //
-  // }
 
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,6 +181,7 @@ class _AdddetailsState extends State<Adddetails> {
               margin: EdgeInsets.only(top: 20),
               child: ElevatedButton(
                   onPressed: () {
+                    CircularProgressIndicator();
                     EasyLoading.show(status: 'loading...');
                     imgurl = uploadImageToFirebase(context);
                     if (imgurl != null) {
