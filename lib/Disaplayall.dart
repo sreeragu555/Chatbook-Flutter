@@ -50,7 +50,7 @@ class _DisplayallState extends State<Displayall> {
                               onTap: () {
                               Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => ChatScreen(document.data()['Name'])));
+                              MaterialPageRoute(builder: (context) => ChatScreen(document.data()['Name'],document.data()['uid'])));
                               },
                         leading: CircleAvatar(
                                            child: Icon(Icons.person),

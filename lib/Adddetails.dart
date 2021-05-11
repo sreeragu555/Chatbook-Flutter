@@ -158,7 +158,6 @@ class _AdddetailsState extends State<Adddetails> {
                         Positioned(
                           child: FloatingActionButton(
                             onPressed: () {
-
                               getImage();
                             },
                             tooltip: 'Pick Image',

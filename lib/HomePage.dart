@@ -3,10 +3,12 @@ import 'package:chatbookflutter/AllUsers.dart';
 import 'package:chatbookflutter/Chat.dart';
 import 'package:chatbookflutter/Disaplayall.dart';
 import 'package:chatbookflutter/LoginPage.dart';
+import 'package:chatbookflutter/Settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'TestUsers.dart';
 
@@ -17,7 +19,6 @@ class HomeScreen extends StatefulWidget {
 
 FirebaseAuth FAuth = FirebaseAuth.instance;
 String uid = FAuth.currentUser.uid.toString();
-
 
 class HomeScreenState extends State<HomeScreen> {
   void initState() {
@@ -48,7 +49,6 @@ class HomeScreenState extends State<HomeScreen> {
         title: Text("ChatBook"),
         leading: GestureDetector(
           onTap: () {
-            /* Write listener code here */
           },
           child: Icon(Icons.person),
         ),
@@ -78,21 +78,13 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-       body:
-       //Container(
-      //   //margin: EdgeInsets.only(top: 5),
-      //   child: SingleChildScrollView(
-      //     physics: BouncingScrollPhysics(),
-      //     child:
-       Stack(
-         children:[
-           GetMessagedUserswidget(),
-           //GetMessagedUsersonreceive()
-         ]
-
-       ),
-      //   ),
-      // ),
+      body: Container(
+        //margin: EdgeInsets.only(top: 5),
+        child: SingleChildScrollView(
+          physics: BouncingScrollPhysics(),
+          child: CheckwithUser(),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
           child: Icon(Icons.message_outlined),
           onPressed: () {
@@ -104,7 +96,17 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> Action_for_PopUp(String choice) async {
     if (choice == Settings)
-      print("Settings clicked");
+      {
+        FirebaseFirestore.instance
+                 .collection('Users')
+                 .where("uid", isEqualTo: uid)
+                 .get()
+                .then((value) {
+                  Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (context) => SettingsScreen(value.docs[0].data()["Name"],value.docs[0].data()["Profile_pic_url"]
+                  )));
+        });
+        }
     else if (choice == Logout) {
       await FirebaseAuth.instance.signOut();
       Navigator.of(context)
@@ -203,102 +205,196 @@ class HomeScreenState extends State<HomeScreen> {
   //   print(Chats[0].Name.toString());
   // }
 
-String searchid;
-String user;
-  Widget GetMessagedUserswidget() {
+  Widget CheckwithUser() {
     return new StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('Messages')
-          .orderBy("TimeStamp",descending: true)
-          .where("User", arrayContains: uid)
+          .collection('Users')
+          .where("uid",isEqualTo: uid )
           .snapshots(),
       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
         if (!snapshot.hasData) {
           return Center(child: Text('No Chats available..'));
-        }
-        else {
+        } else {
           return ListView.builder(
-              physics: NeverScrollableScrollPhysics(),
+              physics: BouncingScrollPhysics(),
+              shrinkWrap: true,
+              scrollDirection: Axis.vertical,
+              itemCount: snapshot.data.docs[0]["Chats"].length,
+              itemBuilder: (context, index) {
+                DocumentSnapshot mypost = snapshot.data.docs[0];
+                //print(snapshot.data.docs[0]["Chats"].length);
+                return StreamBuilder(
+                    stream: FirebaseFirestore.instance
+                        .collection('Users')
+                        .where('uid', isEqualTo: mypost["Chats"][index])
+                        .snapshots(),
+                    builder: (BuildContext context,
+                        AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      } else if (!snapshot.hasData) {
+                        return Center(
+                            child: Text(
+                              "No contacts available",
+                              style: TextStyle(fontSize: 20),
+                            ));
+                      } else {
+                        return new ListView(
+                          physics: BouncingScrollPhysics(),
+                          scrollDirection: Axis.vertical,
+                          shrinkWrap: true,
+                          children: snapshot.data.docs.map((DocumentSnapshot document) {
+                            return new Container(
+                              padding: EdgeInsets.all(5),
+                              child: ListTile(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => ChatScreen(
+                                              document.data()['Name'],
+                                              document.data()['uid'])));
+                                },
+                                leading: ClipRRect(
+                                    borderRadius: BorderRadius.circular(300.0),
+                                    child: Container(
+                                        width: 50.0,
+                                        height: 50.0,
+                                        decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            image: DecorationImage(
+                                                fit: BoxFit.fill,
+                                                image: NetworkImage(
+                                                    document.data()[
+                                                    'Profile_pic_url']))))),
+                                title: Text(
+                                  document.data()['Name'],
+                                  style: TextStyle(
+                                    //fontWeight:FontWeight.bold,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                // trailing: Text(
+                                //   //getTime(mypost["TimeStamp"].toString()),
+                                //   style: TextStyle(fontSize: 12),
+                                // ),
+                                // subtitle: Text(mypost["Message"]),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      }
+                    });
+                //return Container(child: Text(mypost["Chats"][index]));
+              });
+        }
+      },
+    );
+  }
+
+  String searchid;
+  var displayusers = List<String>();
+  Widget GetMessagedUserswidget() {
+    return new StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Messages')
+          .orderBy("TimeStamp", descending: true)
+          .where("User",isEqualTo: uid )
+          .snapshots(),
+      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (!snapshot.hasData) {
+          return Center(child: Text('No Chats available..'));
+        } else {
+          return ListView.builder(
+              physics: BouncingScrollPhysics(),
+              //physics: NeverScrollableScrollPhysics(),
               shrinkWrap: true,
               scrollDirection: Axis.vertical,
               itemCount: snapshot.data.docs.length,
               itemBuilder: (context, index) {
                 DocumentSnapshot mypost = snapshot.data.docs[index];
-                print("Receiver id: " + mypost['Receiver_id']);
-                print(mypost["User"]);
-                mypost["Sender_id"]==uid?searchid=mypost['Receiver_id']:searchid=mypost["Sender_id"];
-                  return StreamBuilder(
-                      stream: FirebaseFirestore.instance
-                          .collection('Users')
-                          .where('uid', isEqualTo: searchid)
-                          .snapshots(),
-                      builder: (BuildContext context,
-                          AsyncSnapshot<QuerySnapshot> snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
-                        } else if (!snapshot.hasData) {
-                          return Center(
-                              child: Text(
-                                "No contacts available",
-                                style: TextStyle(fontSize: 20),
-                              ));
-                        }
-                        else {
-                          return new ListView(
-                            scrollDirection: Axis.vertical,
-                            shrinkWrap: true,
-                            children: snapshot.data.docs.map((
-                                DocumentSnapshot document) {
-                              return new Container(
-                                padding: EdgeInsets.all(5),
-                                child: ListTile(
-                                  onTap: () {
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) =>
-                                                ChatScreen(
-                                                    document
-                                                        .data()['Name'])));
-                                  },
-                                  leading: ClipRRect(
-                                      borderRadius: BorderRadius.circular(
-                                          300.0),
-                                      child: Container(
-                                          width: 50.0,
-                                          height: 50.0,
-                                          decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              image: DecorationImage(
-                                                  fit: BoxFit.fill,
-                                                  image: NetworkImage(document
-                                                      .data()['Profile_pic_url'])
-                                              )))),
-                                  title: Text(
-                                    document.data()['Name'], style: TextStyle(
+                //print("Receiver id: " + mypost['Receiver_id']);
+                //print(mypost["User"]);
+                mypost["User"][0] == uid ? searchid = mypost['User'][1] : searchid = mypost["User"][0];
+                return StreamBuilder(
+                    stream: FirebaseFirestore.instance
+                        .collection('Users')
+                        .where('uid', isEqualTo: searchid)
+                        .snapshots(),
+                    builder: (BuildContext context,
+                        AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      } else if (!snapshot.hasData) {
+                        return Center(
+                            child: Text(
+                          "No contacts available",
+                          style: TextStyle(fontSize: 20),
+                        ));
+                      } else {
+                        return new ListView(
+                          physics: BouncingScrollPhysics(),
+                          scrollDirection: Axis.vertical,
+                          shrinkWrap: true,
+                          children: snapshot.data.docs
+                              .map((DocumentSnapshot document) {
+                            return new Container(
+                              padding: EdgeInsets.all(5),
+                              child: ListTile(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => ChatScreen(
+                                              document.data()['Name'],
+                                              document.data()['uid'])));
+                                },
+                                leading: ClipRRect(
+                                    borderRadius: BorderRadius.circular(300.0),
+                                    child: Container(
+                                        width: 50.0,
+                                        height: 50.0,
+                                        decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            image: DecorationImage(
+                                                fit: BoxFit.fill,
+                                                image: NetworkImage(
+                                                    document.data()[
+                                                        'Profile_pic_url']))))),
+                                title: Text(
+                                  document.data()['Name'],
+                                  style: TextStyle(
                                     //fontWeight:FontWeight.bold,
                                     letterSpacing: 1.0,
                                   ),
-                                  ),
-
-                                  trailing: Text(
-                                    mypost["TimeStamp"].toDate().toString(),
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                  subtitle:
-                                        Text(mypost["Message"]),
-                                  
                                 ),
-                              );
-                            }).toList(),
-                          );
-                        }
-                      });
+                                trailing: Text(
+                                  getTime(mypost["TimeStamp"].toString()),
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                subtitle: Text(mypost["Message"]),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      }
+                    });
               });
-              }
+        }
       },
     );
+  }
 
+  String getTime(String timestamp) {
+    DateTime dateTime =
+        DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
+    DateFormat format;
+    if (dateTime.difference(DateTime.now()).inMilliseconds <= 86400000) {
+      format = DateFormat.yMMMMd('en_US').add_jm();
+    } else {
+      format = DateFormat.yMd('en_US');
+    }
+    return format
+        .format(DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp)));
   }
 }
