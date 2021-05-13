@@ -1,10 +1,7 @@
-import 'package:chatbookflutter/Adddetails.dart';
 import 'package:chatbookflutter/HomePage.dart';
-import 'package:chatbookflutter/LoginPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-
 import 'LoginPage.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
@@ -21,7 +18,6 @@ class MyApp extends StatelessWidget {
       return MaterialApp(
         title: 'ChatBook',
         theme: ThemeData(
-
           primarySwatch: Colors.blue,
         ),
         home: HomeScreen(),
@@ -35,10 +31,9 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
         ),
         home: LoginPage(),
+        builder: EasyLoading.init(),
       );
     }
-
-
   }
 }
 

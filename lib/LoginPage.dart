@@ -1,11 +1,5 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:loading_animations/loading_animations.dart';
-import 'Adddetails.dart';
 import 'Verification.dart';
-import 'package:overlay/overlay.dart';
-
 import 'Waveclipper.dart';
 
 class LoginPage extends StatefulWidget {
@@ -125,4 +119,3 @@ class _loginPageState extends State<LoginPage> {
   //   ));
   // }
 }
-

@@ -1,11 +1,12 @@
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -18,7 +19,7 @@ class Adddetails extends StatefulWidget {
 
 FirebaseAuth user = FirebaseAuth.instance;
 String uid = user.currentUser.uid.toString();
-String usercollectionid="-1",Name="-1",imageurl="-1";
+String usercollectionid="-1",Name="",imageurl="https://devtalk.blender.org/uploads/default/original/2X/c/cbd0b1a6345a44b58dda0f6a355eb39ce4e8a56a.png";
 
 class _AdddetailsState extends State<Adddetails> {
 
@@ -36,11 +37,14 @@ class _AdddetailsState extends State<Adddetails> {
         usercollectionid=element.reference.id;
         Name=element["Name"];
         imageurl=element["Profile_pic_url"];
+        setState(() {
+          name.text=Name;
+          imageurl=element["Profile_pic_url"];
+          _image=element["Profile_pic_url"];
+        });
       });
     });
   }
-
-
 
   @override
   FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -50,13 +54,32 @@ class _AdddetailsState extends State<Adddetails> {
   final picker = ImagePicker();
 
   Future getImage() async {
-    final pickedFile = await picker.getImage(source: ImageSource.gallery,maxHeight: 300,maxWidth: 300);
-
+    final pickedFile = await picker.getImage(
+        source: ImageSource.gallery, maxHeight: 300, maxWidth: 300);
+    _cropImage(pickedFile.path);
+  }
+  _cropImage(filePath) async {
+    File croppedImage = await ImageCropper.cropImage(
+        sourcePath: filePath,
+        maxWidth: 200,
+        maxHeight: 200,
+        aspectRatio: CropAspectRatio(ratioX: 1, ratioY: 1),
+        compressQuality: 100,
+        compressFormat: ImageCompressFormat.jpg,
+        androidUiSettings:AndroidUiSettings(
+          toolbarColor: Colors.blue,
+          toolbarTitle: "Crop your image",
+        )
+    );
     setState(() {
-      if (pickedFile != null) {
-        _image = File(pickedFile.path) as File;
+      if (croppedImage != null) {
+        _image = File(croppedImage.path) as File;
       } else {
-        print('No image selected.');
+        Fluttertoast.showToast(
+          msg: "No image has been selected",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+        );
       }
     });
   }
@@ -72,6 +95,11 @@ class _AdddetailsState extends State<Adddetails> {
       print(url);
       addUser(name.text.toString(), url.toString());
     }).catchError((onError) {
+      Fluttertoast.showToast(
+        msg: "Something happened!!",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+      );
       print(onError);
     });
     return url;
@@ -80,14 +108,16 @@ class _AdddetailsState extends State<Adddetails> {
   Future<void> addUser(String Name, String imageurl) async {
 
     CollectionReference users = FirebaseFirestore.instance.collection('Users');
-    // Call the user's CollectionReference to add a new user
     if(usercollectionid=='-1') {
-      users.add({'uid': uid, 'Name': Name, 'Profile_pic_url': imageurl}).then(
+      List<dynamic>list;
+      users.add({'uid': uid, 'Name': Name, 'Profile_pic_url': imageurl,'Chats':FieldValue.arrayUnion(list)}).then(
               (value) {
-            print("User Added");
+           // print("User Added");
             EasyLoading.dismiss();
-            Navigator.of(context)
-                .push(MaterialPageRoute(builder: (context) => HomeScreen()));
+            Navigator.of(context).pop();
+            Navigator
+                .of(context)
+                .pushReplacement(MaterialPageRoute(builder: (context) => HomeScreen()));
           }).catchError((error) {
         EasyLoading.dismiss();
         final snackBar = SnackBar(
@@ -102,10 +132,12 @@ class _AdddetailsState extends State<Adddetails> {
       'Name':Name,
         'Profile_pic_url':imageurl
       }).then((value) {
-        print("updated user details");
+       // print("updated user details");
         EasyLoading.dismiss();
-        Navigator.of(context)
-            .push(MaterialPageRoute(builder: (context) => HomeScreen()));
+        Navigator.of(context).pop();
+        Navigator
+            .of(context)
+            .pushReplacement(MaterialPageRoute(builder: (context) => HomeScreen()));
       }).catchError((error) {
         EasyLoading.dismiss();
         final snackBar = SnackBar(
@@ -141,7 +173,7 @@ class _AdddetailsState extends State<Adddetails> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(300),
                             child: Image.network(
-                                "https://devtalk.blender.org/uploads/default/original/2X/c/cbd0b1a6345a44b58dda0f6a355eb39ce4e8a56a.png",
+                                imageurl,
                               loadingBuilder:(BuildContext context, Widget child,ImageChunkEvent loadingProgress) {
                                 if (loadingProgress == null) return child;
                                 return Center(
@@ -174,19 +206,19 @@ class _AdddetailsState extends State<Adddetails> {
               child: TextField(
                 controller: name,
                 decoration: InputDecoration(hintText: "Name"),
+                inputFormatters: [new WhitelistingTextInputFormatter(RegExp("[a-zA-Z ]")),],
               ),
             ),
             Container(
               margin: EdgeInsets.only(top: 20),
               child: ElevatedButton(
                   onPressed: () {
-                    CircularProgressIndicator();
                     EasyLoading.show(status: 'loading...');
                     imgurl = uploadImageToFirebase(context);
-                    if (imgurl != null) {
-                      print("We have uploaded the image");
-                    } else
-                      print("Some error while uploading image");
+                    // if (imgurl != null) {
+                    //   print("We have uploaded the image");
+                    // } else
+                    //   print("Some error while uploading image");
                   },
                   child: Text("Next")),
             )

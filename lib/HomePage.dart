@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:chatbookflutter/AllUsers.dart';
 import 'package:chatbookflutter/Chat.dart';
 import 'package:chatbookflutter/Disaplayall.dart';
 import 'package:chatbookflutter/LoginPage.dart';
@@ -9,9 +7,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-import 'TestUsers.dart';
-
 class HomeScreen extends StatefulWidget {
   @override
   HomeScreenState createState() => HomeScreenState();
@@ -21,28 +16,10 @@ FirebaseAuth FAuth = FirebaseAuth.instance;
 String uid = FAuth.currentUser.uid.toString();
 
 class HomeScreenState extends State<HomeScreen> {
-  void initState() {
-    super.initState();
-    print("current user id " + uid);
-    //GetUserIDFromMessage();
-    // print("After function"+MessageID.toString());
-    // print("We are executing");
-    // GetMessagedUsers();
-  }
-
   @override
   static const String Settings = "Settings";
   static const String Logout = "Logout";
   static const List<String> choices = <String>[Settings, Logout];
-
-  // List<AllUsers> Chats = [];
-  //
-  // List<TestUsers> chatUsers = [
-  //   TestUsers(Name: "Sreerag", message_Text: "Hi", time: "Now"),
-  //   TestUsers(Name: "Sreejith", message_Text: "Hi", time: "Now"),
-  //   TestUsers(Name: "Sandeep", message_Text: "Hi", time: "Now"),
-  // ];
-
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -114,97 +91,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Widget Chatslist() => ListView.builder(
-  //     itemCount: chatUsers.length,
-  //     shrinkWrap: true,
-  //     //padding: EdgeInsets.only(top: 16),
-  //     //physics: NeverScrollableScrollPhysics(),
-  //     itemBuilder: (context, index) {
-  //       return GestureDetector(
-  //         onTap: () {},
-  //         child: Container(
-  //           padding: EdgeInsets.all(5),
-  //           child: ListTile(
-  //             onTap: () {
-  //               Navigator.push(
-  //                   context,
-  //                   MaterialPageRoute(
-  //                       builder: (context) =>
-  //                           ChatScreen(chatUsers[index].Name)));
-  //             },
-  //             leading: CircleAvatar(
-  //               child: Icon(Icons.person),
-  //               radius: 25,
-  //             ),
-  //             title: Text(
-  //               chatUsers[index].Name,
-  //               style: TextStyle(
-  //                   //fontWeight:FontWeight.bold,
-  //                   letterSpacing: 1.0,
-  //                   fontFamily: ''),
-  //             ),
-  //             trailing: Text(
-  //               chatUsers[index].time,
-  //               style: TextStyle(fontSize: 12),
-  //             ),
-  //             subtitle: Text(chatUsers[index].message_Text),
-  //           ),
-  //         ),
-  //       );
-  //     });
-  // List<String> MessageID = [];
-  //
-  // Stream<AllUsers> GetUserIDFromMessage() {
-  //   FirebaseFirestore.instance
-  //       .collection('Messages')
-  //       .orderBy("TimeStamp",descending: true)
-  //       .where("User", arrayContains: uid)
-  //       .get()
-  //       .then((val) {
-  //     for (int i = 0; i < val.docs.length; ++i) {
-  //       setState(() {
-  //       List.from(val.docs[i].data()["User"]).forEach((element) {
-  //
-  //         //then add the data to the List<Offset>, now we have a type Offset
-  //         pointList.add(element);
-  //         print(pointList);
-  //       });
-  //     });
-  //           }
-  //   });
-  //   // print("From GetUserID "+MessageID[0]);
-  //   GetMessagedUsers();
-  // }
-  //
-  // Stream<AllUsers> GetMessagedUsers() {
-  //   final jsonList = MessageID.map((item) => jsonEncode(item)).toList();
-  //
-  //   // using toSet - toList strategy
-  //   final uniqueJsonList = jsonList.toSet().toList();
-  //
-  //   // convert each item back to the original form using JSON decoding
-  //   final result = uniqueJsonList.map((item) => jsonDecode(item)).toList();
-  //   print("result list contains:");
-  //   print(result);
-  //   for (int i = 0; i < result.length; i++) {
-  //     FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .where("uid", isEqualTo: result[i])
-  //         .get()
-  //         .then((value) {
-  //       for (int i = 0; i < value.docs.length; ++i) {
-  //         Chats.insert(
-  //             0,
-  //             AllUsers(
-  //                 Name: value.docs[i].data()["Name"],
-  //                 imageurl: value.docs[i].data()["Profile_pic_url"]));
-  //       }
-  //     });
-  //   }
-  //   print("Chats list contains:");
-  //   print(Chats[0].Name.toString());
-  // }
-
   Widget CheckwithUser() {
     return new StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -221,12 +107,13 @@ class HomeScreenState extends State<HomeScreen> {
               scrollDirection: Axis.vertical,
               itemCount: snapshot.data.docs[0]["Chats"].length,
               itemBuilder: (context, index) {
-                DocumentSnapshot mypost = snapshot.data.docs[0];
-                //print(snapshot.data.docs[0]["Chats"].length);
+                //DocumentSnapshot mypost = snapshot.data.docs[0];
+                Map<dynamic, dynamic> User =snapshot.data.docs[0]["Chats"][index];
+                //print(User["SendBy"]);
                 return StreamBuilder(
                     stream: FirebaseFirestore.instance
                         .collection('Users')
-                        .where('uid', isEqualTo: mypost["Chats"][index])
+                        .where('uid', isEqualTo: User["SendBy"])
                         .snapshots(),
                     builder: (BuildContext context,
                         AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -253,20 +140,30 @@ class HomeScreenState extends State<HomeScreen> {
                                       MaterialPageRoute(
                                           builder: (context) => ChatScreen(
                                               document.data()['Name'],
-                                              document.data()['uid'])));
+                                              document.data()['uid'],document.data()['Profile_pic_url'])));
                                 },
-                                leading: ClipRRect(
-                                    borderRadius: BorderRadius.circular(300.0),
-                                    child: Container(
-                                        width: 50.0,
-                                        height: 50.0,
-                                        decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            image: DecorationImage(
-                                                fit: BoxFit.fill,
-                                                image: NetworkImage(
-                                                    document.data()[
-                                                    'Profile_pic_url']))))),
+                                leading: Container(
+                                  width: 50,
+                                  height: 50,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(300),
+                                    child: Image.network(
+                                      document.data()[
+                                      'Profile_pic_url'],
+                                      loadingBuilder:(BuildContext context, Widget child,ImageChunkEvent loadingProgress) {
+                                        if (loadingProgress == null) return child;
+                                        return Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress.expectedTotalBytes != null ?
+                                            loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes
+                                                : null,
+                                          ),
+                                        );
+                                      },
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
                                 title: Text(
                                   document.data()['Name'],
                                   style: TextStyle(
@@ -274,11 +171,11 @@ class HomeScreenState extends State<HomeScreen> {
                                     letterSpacing: 1.0,
                                   ),
                                 ),
-                                // trailing: Text(
-                                //   //getTime(mypost["TimeStamp"].toString()),
-                                //   style: TextStyle(fontSize: 12),
-                                // ),
-                                // subtitle: Text(mypost["Message"]),
+                                 trailing: Text(
+                                   getTime(User["Time"]),
+                                   style: TextStyle(fontSize: 12),
+                                 ),
+                                 subtitle: Text(User["LastMessage"]),
                               ),
                             );
                           }).toList(),
@@ -286,99 +183,6 @@ class HomeScreenState extends State<HomeScreen> {
                       }
                     });
                 //return Container(child: Text(mypost["Chats"][index]));
-              });
-        }
-      },
-    );
-  }
-
-  String searchid;
-  var displayusers = List<String>();
-  Widget GetMessagedUserswidget() {
-    return new StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('Messages')
-          .orderBy("TimeStamp", descending: true)
-          .where("User",isEqualTo: uid )
-          .snapshots(),
-      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-        if (!snapshot.hasData) {
-          return Center(child: Text('No Chats available..'));
-        } else {
-          return ListView.builder(
-              physics: BouncingScrollPhysics(),
-              //physics: NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              scrollDirection: Axis.vertical,
-              itemCount: snapshot.data.docs.length,
-              itemBuilder: (context, index) {
-                DocumentSnapshot mypost = snapshot.data.docs[index];
-                //print("Receiver id: " + mypost['Receiver_id']);
-                //print(mypost["User"]);
-                mypost["User"][0] == uid ? searchid = mypost['User'][1] : searchid = mypost["User"][0];
-                return StreamBuilder(
-                    stream: FirebaseFirestore.instance
-                        .collection('Users')
-                        .where('uid', isEqualTo: searchid)
-                        .snapshots(),
-                    builder: (BuildContext context,
-                        AsyncSnapshot<QuerySnapshot> snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
-                      } else if (!snapshot.hasData) {
-                        return Center(
-                            child: Text(
-                          "No contacts available",
-                          style: TextStyle(fontSize: 20),
-                        ));
-                      } else {
-                        return new ListView(
-                          physics: BouncingScrollPhysics(),
-                          scrollDirection: Axis.vertical,
-                          shrinkWrap: true,
-                          children: snapshot.data.docs
-                              .map((DocumentSnapshot document) {
-                            return new Container(
-                              padding: EdgeInsets.all(5),
-                              child: ListTile(
-                                onTap: () {
-                                  Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) => ChatScreen(
-                                              document.data()['Name'],
-                                              document.data()['uid'])));
-                                },
-                                leading: ClipRRect(
-                                    borderRadius: BorderRadius.circular(300.0),
-                                    child: Container(
-                                        width: 50.0,
-                                        height: 50.0,
-                                        decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            image: DecorationImage(
-                                                fit: BoxFit.fill,
-                                                image: NetworkImage(
-                                                    document.data()[
-                                                        'Profile_pic_url']))))),
-                                title: Text(
-                                  document.data()['Name'],
-                                  style: TextStyle(
-                                    //fontWeight:FontWeight.bold,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                                trailing: Text(
-                                  getTime(mypost["TimeStamp"].toString()),
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                                subtitle: Text(mypost["Message"]),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      }
-                    });
               });
         }
       },

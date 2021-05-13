@@ -1,5 +1,4 @@
 import 'package:chatbookflutter/Adddetails.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pinput/pin_put/pin_put.dart';
@@ -58,7 +57,7 @@ class _otpscreenState extends State<OTPScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  child: Text("We have send OTP to ${widget.phone}"),
+                  child: Text("We will send OTP to ${widget.phone}"),
                 ),
                 Container(
                   margin: EdgeInsets.all(40),
@@ -73,7 +72,7 @@ class _otpscreenState extends State<OTPScreen> {
                                 verificationId: VerificationCode, smsCode: pin))
                             .then((value) async {
                           if (value.user != null) {
-                            print("Signed in");
+                            //print("Signed in");
                             EasyLoading.dismiss();
                             Navigator.of(context).push(MaterialPageRoute(
                                 builder: (context) => Adddetails()));
@@ -123,7 +122,7 @@ class _otpscreenState extends State<OTPScreen> {
               .signInWithCredential(credential)
               .then((value) async {
             if (value.user != null) {
-              print("Signed in");
+              //print("Signed in");
               Navigator.of(context)
                   .push(MaterialPageRoute(builder: (context) => Adddetails()));
             }

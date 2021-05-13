@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'Chats.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -9,57 +8,85 @@ class ChatScreen extends StatefulWidget {
   ChatScreenState createState() => ChatScreenState();
   String Name;
   String puid;
-  ChatScreen(this.Name,this.puid);
+  String imageurl;
+  ChatScreen(this.Name, this.puid, this.imageurl);
 }
+
 FirebaseAuth FAuth = FirebaseAuth.instance;
 String uid = FAuth.currentUser.uid.toString();
 
 class ChatScreenState extends State<ChatScreen> {
+  ScrollController _scrollController;
+
+  void initState() {
+    _scrollController = ScrollController();
+    if (_scrollController.hasClients)
+      _scrollController.animateTo(_scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 1), curve: Curves.easeOut);
+    super.initState();
+  }
+
   @override
-  // List<Chats> messages = [
-  //   Chats(Message: "Hi", Time: "One Minute ago", Sender: "Sreerag"),
-  //   Chats(Message: "Hi", Time: "One Minute ago", Sender: "Sreejith"),
-  //   Chats(Message: "How are you?", Time: "One Minute ago", Sender: "Sreerag"),
-  //   Chats(Message: "Iam Fine", Time: "One Minute ago", Sender: "Sreejith"),
-  //   Chats(Message: "Call me if you are free", Time: "Now", Sender: "Sreerag"),
-  //   Chats(Message: "Ok. Calling you", Time: "Now", Sender: "Sreejith"),
-  // ];
   final message = TextEditingController();
+
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          titleSpacing: -10,
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                child: Icon(Icons.person),
-                radius: 22,
-              ),
-              Container(
-                  margin: EdgeInsets.only(left: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("${widget.Name}"),
-                      Text(
-                        "Online",
-                        style: TextStyle(color: Colors.white, fontSize: 13),
-                      ),
-                    ],
-                  ))
-            ],
-          ),
-          elevation: 0,
-        ),
-        body:
-        Stack(
+      appBar: AppBar(
+        titleSpacing: -10,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            displayMessages(),
-      Stack(
-        children: <Widget>[
+            Container(
+                //margin: EdgeInsets.only(top: 30),
+                width: 60,
+                height: 60,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(300),
+                    child: Image.network(
+                      widget.imageurl,
+                      loadingBuilder: (BuildContext context, Widget child,
+                          ImageChunkEvent loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes
+                                : null,
+                          ),
+                        );
+                      },
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                )),
+            Container(
+                margin: EdgeInsets.only(left: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("${widget.Name}"),
+                    // Text(
+                    //   "Online",
+                    //   style: TextStyle(color: Colors.white, fontSize: 13),
+                    // ),
+                  ],
+                ))
+          ],
+        ),
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Container(
+            //margin: EdgeInsets.only(bottom: 70),
+            height: MediaQuery.of(context).size.height - 150,
+            child: GetMessage(),
+          ),
           Align(
             alignment: Alignment.bottomLeft,
             child: Container(
@@ -90,7 +117,7 @@ class ChatScreenState extends State<ChatScreen> {
                   ),
                   Expanded(
                     child: TextField(
-                      controller:message,
+                      controller: message,
                       decoration: InputDecoration(
                           hintText: "Write message...",
                           hintStyle: TextStyle(color: Colors.black54),
@@ -102,15 +129,19 @@ class ChatScreenState extends State<ChatScreen> {
                   ),
                   FloatingActionButton(
                     onPressed: () {
-                      CollectionReference messages = FirebaseFirestore.instance.collection('Messages');
+                      CollectionReference messages = FirebaseFirestore.instance
+                          .collection('Chats')
+                          .doc(uid + widget.puid)
+                          .collection("Messages");
                       messages.add({
-                        'Message':message.text,
-                        'TimeStamp':DateTime.now().millisecondsSinceEpoch.toString(),
-                        'User':FieldValue.arrayUnion([uid,widget.puid])
+                        'Message': message.text,
+                        'TimeStamp':
+                            DateTime.now().millisecondsSinceEpoch.toString(),
+                        'User': FieldValue.arrayUnion([uid, widget.puid])
                       }).then((value) {
-                        print("Message added");
-                        message.text="";
-                        });
+                        //print("Message added");
+                        CheckReceiverinChats(uid, widget.puid, 0);
+                      });
                     },
                     child: Icon(
                       Icons.send,
@@ -127,107 +158,233 @@ class ChatScreenState extends State<ChatScreen> {
         ],
         //overflow: Overflow.,
       ),
-          ],
-        ));
+    );
   }
 
-  Widget displayMessages() {
-    //print("Inside uid : "+ uid+ " pid: "+widget.puid);
+  void CheckReceiverinChats(String Applyon, String addid, int checker) {
+    CollectionReference users = FirebaseFirestore.instance.collection('Users');
+    users.where("uid", isEqualTo: Applyon).get().then((value) {
+      //print(value.docs[0].reference.id);
+      List<dynamic> Users = value.docs[0].data()["Chats"];
+      //print(Users.contains(widget.puid));
+      var userexistornot = false;
+      for (int i = 0; i < value.docs[0].data()["Chats"].length; i++) {
+        if (value.docs[0].data()["Chats"][i]["SendBy"] == addid) {
+          userexistornot = true;
+          Users[i]["LastMessage"] = message.text;
+          Users[i]["Time"] = DateTime.now().millisecondsSinceEpoch.toString();
+          FirebaseFirestore.instance
+              .collection('Users')
+              .doc(value.docs[0].reference.id)
+              .update({'Chats': Users}).then((value) {
+            //print("updated the last message and time");
+            if (checker == 0) {
+              CheckReceiverinChats(addid, Applyon, 1);
+            } else {
+              message.text = "";
+            }
+          });
+        }
+      }
+      if (userexistornot == false) {
+        Users.add({
+          'LastMessage': message.text,
+          'Time': DateTime.now().millisecondsSinceEpoch.toString(),
+          'SendBy': addid
+        });
+        FirebaseFirestore.instance
+            .collection('Users')
+            .doc(value.docs[0].reference.id)
+            .update({'Chats': Users}).then((value) {
+          //print("updated the last message and time with new data");
+          message.text = "";
+        });
+      }
+    });
+  }
+
+  // Widget displayMessages() {
+  //   return new StreamBuilder<QuerySnapshot>(
+  //       stream: FirebaseFirestore.instance
+  //           .collection('Messages')
+  //           .orderBy("TimeStamp", descending: true)
+  //           .where("User", arrayContains: widget.puid)
+  //           .snapshots(),
+  //       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+  //         if (snapshot.connectionState == ConnectionState.waiting) {
+  //           return Center(child: CircularProgressIndicator());
+  //         } else if (!snapshot.hasData) {
+  //           return Center(
+  //               child: Text(
+  //             "No contacts available",
+  //             style: TextStyle(fontSize: 20),
+  //           ));
+  //         } else {
+  //           return new StreamBuilder<QuerySnapshot>(
+  //               stream: FirebaseFirestore.instance
+  //                   .collection('Messages')
+  //                   .orderBy("TimeStamp", descending: true)
+  //                   .where("User", arrayContains: uid)
+  //                   .snapshots(),
+  //               builder: (BuildContext context,
+  //                   AsyncSnapshot<QuerySnapshot> snapshot) {
+  //                 if (snapshot.connectionState == ConnectionState.waiting) {
+  //                   return Center(child: CircularProgressIndicator());
+  //                 } else if (!snapshot.hasData) {
+  //                   return Center(
+  //                       child: Text(
+  //                     "No contacts available",
+  //                     style: TextStyle(fontSize: 20),
+  //                   ));
+  //                 } else {
+  //                   if (_scrollController.hasClients)
+  //                     _scrollController.animateTo(
+  //                         _scrollController.offset + snapshot.data.docs.length,
+  //                         duration: const Duration(milliseconds: 500),
+  //                         curve: Curves.easeOut);
+  //                   return new ListView(
+  //                     shrinkWrap: true,
+  //                     reverse: true,
+  //                     controller: _scrollController,
+  //                     scrollDirection: Axis.vertical,
+  //                     physics: BouncingScrollPhysics(),
+  //                     children:
+  //                         snapshot.data.docs.map((DocumentSnapshot document) {
+  //                       //print("Document datas");
+  //                       //print(document.data()["User"][0]);
+  //                       return Container(
+  //                           padding: EdgeInsets.only(
+  //                               left: 14, right: 14, top: 10, bottom: 10),
+  //                           child: Align(
+  //                               alignment:
+  //                                   (document.data()["User"][1] == widget.puid
+  //                                       ? Alignment.topRight
+  //                                       : Alignment.topLeft),
+  //                               child: Container(
+  //                                   decoration: BoxDecoration(
+  //                                     borderRadius: BorderRadius.circular(20),
+  //                                     color: (document.data()["User"][1] ==
+  //                                             widget.puid
+  //                                         ? Colors.grey.shade200
+  //                                         : Colors.blue[200]),
+  //                                   ),
+  //                                   padding: EdgeInsets.all(16),
+  //                                   child: Text(
+  //                                     document.data()['Message'],
+  //                                     style: TextStyle(fontSize: 15),
+  //                                   ))));
+  //                     }).toList(),
+  //                   );
+  //                 }
+  //               });
+  //         }
+  //       });
+  // }
+  Widget GetMessage() {
+
     return new StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('Messages')
-            .orderBy("TimeStamp",descending: false)
-            .where("User", arrayContains:widget.puid)
+        stream: FirebaseFirestore.instance
+            .collection('Chats')
+            .doc(uid + widget.puid)
+            .collection("Messages")
+            .orderBy("TimeStamp", descending: false)
             .snapshots(),
         builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          else if(!snapshot.hasData)
-          {
-            return Center(
-                child: Text("No contacts available",style: TextStyle(
-                    fontSize: 20
-                ),)
-            ) ;
-          }
-          else {
+          if (!snapshot.hasData) {
+            print("in else");
+            //Start
+              return CheckwithIdreverse();
+            //End
+          } else {
             return new ListView(
+              shrinkWrap: true,
+              reverse: true,
+              controller: _scrollController,
+              scrollDirection: Axis.vertical,
               physics: BouncingScrollPhysics(),
               children: snapshot.data.docs.map((DocumentSnapshot document) {
                 //print("Document datas");
                 //print(document.data()["User"][0]);
                 return Container(
-                  padding:
-                  EdgeInsets.only(left: 14, right: 14, top: 10, bottom: 10),
-                  child: Align(
-                      alignment: (document.data()["User"][1] == widget.puid
-                          ? Alignment.topRight:Alignment.topLeft),
-                      child: Container(
-                      decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                  color: (document.data()["User"][1] == widget.puid
-                      ? Colors.grey.shade200
-                      : Colors.blue[200]),
-                ),
-                padding: EdgeInsets.all(16),
-                child: Text(
-                    document.data()['Message'],
-                style: TextStyle(fontSize: 15),
-                )
-                )));
+                    padding: EdgeInsets.only(
+                        left: 14, right: 14, top: 10, bottom: 10),
+                    child: Align(
+                        alignment: (document.data()["User"][1] == widget.puid
+                            ? Alignment.topRight
+                            : Alignment.topLeft),
+                        child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: (document.data()["User"][1] == widget.puid
+                                  ? Colors.grey.shade200
+                                  : Colors.blue[200]),
+                            ),
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              document.data()['Message'],
+                              style: TextStyle(fontSize: 15),
+                            ))));
               }).toList(),
             );
           }
-        }
-    );
+        });
   }
-
-  // Widget Messages() =>
-  //     SingleChildScrollView(
-  //     child: Stack(children: <Widget>[
-  //       ListView.builder(
-  //           itemCount: messages.length,
-  //           shrinkWrap: true,
-  //           padding: EdgeInsets.only(top: 10, bottom: 10),
-  //           //padding: EdgeInsets.only(top: 16),
-  //           //physics: NeverScrollableScrollPhysics(),
-  //           itemBuilder: (context, index) {
-  //             return Container(
-  //               padding:
-  //                   EdgeInsets.only(left: 14, right: 14, top: 10, bottom: 10),
-  //               child: Align(
-  //                 alignment: (messages[index].Sender == "${widget.Name}"
-  //                     ? Alignment.topLeft
-  //                     : Alignment.topRight),
-  //                 child: Container(
-  //                     decoration: BoxDecoration(
-  //                       borderRadius: BorderRadius.circular(20),
-  //                       color: (messages[index].Sender == "${widget.Name}"
-  //                           ? Colors.grey.shade200
-  //                           : Colors.blue[200]),
-  //                     ),
-  //                     padding: EdgeInsets.all(16),
-  //                     child: Text(
-  //                       messages[index].Message,
-  //                       style: TextStyle(fontSize: 15),
-  //                     )
-  //                     // child: Row(
-  //                     //
-  //                     //   mainAxisAlignment: MainAxisAlignment.start,
-  //                     //   children: [
-  //                     //     Text(messages[index].Message),
-  //                     //     Container(
-  //                     //     child: Align(
-  //                     //         alignment: Alignment.bottomRight,
-  //                     //             child: Text(messages[index].Time,style: TextStyle(
-  //                     //           fontSize: 10
-  //                     //         ),))),
-  //                     //   ],
-  //                     // )),
-  //                     ),
-  //               ),
-  //             );
-  //           })
-  //     ])
-  //     );
+  Widget CheckwithIdreverse()
+  {
+    return new StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('Chats')
+            .doc(widget.puid + uid)
+            .collection("Messages")
+            .orderBy("TimeStamp", descending: false)
+            .snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (!snapshot.hasData) {
+            return Center(
+                child: Text(
+                  "No Chats available",
+                  style: TextStyle(fontSize: 20),
+                ));
+          } else {
+            print("In ListView");
+            return new ListView(
+              shrinkWrap: true,
+              reverse: true,
+              controller: _scrollController,
+              scrollDirection: Axis.vertical,
+              physics: BouncingScrollPhysics(),
+              children: snapshot.data.docs
+                  .map((DocumentSnapshot document) {
+                //print("Document datas");
+                //print(document.data()["User"][0]);
+                return Container(
+                    padding: EdgeInsets.only(
+                        left: 14, right: 14, top: 10, bottom: 10),
+                    child: Align(
+                        alignment: (document.data()["User"][1] ==
+                            widget.puid
+                            ? Alignment.topRight
+                            : Alignment.topLeft),
+                        child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius:
+                              BorderRadius.circular(20),
+                              color: (document.data()["User"]
+                              [1] ==
+                                  widget.puid
+                                  ? Colors.grey.shade200
+                                  : Colors.blue[200]),
+                            ),
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              document.data()['Message'],
+                              style: TextStyle(fontSize: 15),
+                            ))));
+              }).toList(),
+            );
+          }
+        });
+  }
 }
