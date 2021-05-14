@@ -1,6 +1,6 @@
 # chatbookflutter
 
-A new Flutter application.
+A one to one Chat appliation with flutter and firebase
 
 ## Getting Started
 
